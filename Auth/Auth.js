@@ -1,5 +1,8 @@
 const User = require("../model/User");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+const jwtSecret = process.env.jwtSecret;
 
 //Register Funciton
 exports.register = async (req, res, next) => {
@@ -14,12 +17,24 @@ exports.register = async (req, res, next) => {
       username,
       password: hash,
     })
-      .then((user) =>
+      .then((user) => {
+        const maxAge = 3 * 60 * 60;
+        const token = jwt.sign(
+          { id: user._id, username, role: user.role },
+          jwtSecret,
+          { expiresIn: maxAge }
+        );
+
+        res.cookie("jwt", token, {
+          httpOnly: true,
+          maxAge: maxAge * 1000,
+        });
         res.status(200).json({
           message: "User successfully created",
-          user,
-        })
-      )
+          user: user._id,
+          token,
+        });
+      })
       .catch((error) =>
         res.status(401).json({
           message: "User is not successful created",
@@ -44,9 +59,25 @@ exports.login = async (req, res, next) => {
         .json({ message: "Login is not successful", error: "User not found" });
     } else {
       bcrypt.compare(password, user.password).then(function (result) {
-        result
-          ? res.status(200).json({ message: "Login Successfully", user })
-          : res.status(400).json({ message: "Login not successful" });
+        if (result) {
+          const maxAge = 3 * 60 * 60;
+          const token = jwt.sign(
+            { id: user._id, username, role: user.role },
+            jwtSecret,
+            { expiresIn: maxAge }
+          );
+
+          res.cookie("jwt", token, {
+            httpOnly: true,
+            maxAge: maxAge * 1000,
+          });
+
+          res
+            .status(200)
+            .json({ message: "Login Successfully", user: user._id, token });
+        } else {
+          res.status(400).json({ message: "Login not successful" });
+        }
       });
     }
   } catch (error) {
