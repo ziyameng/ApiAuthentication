@@ -1,9 +1,12 @@
 const express = require("express");
+const connectDB = require("./config/database");
+connectDB();
 const app = express();
 require("dotenv").config();
-const connectDB = require("./config/database");
 
-connectDB();
+app.use(express.json());
+//Import Middleware
+app.use("/api/auth", require("./Auth/Route"));
 
 const PORT = process.env.PORT;
 
